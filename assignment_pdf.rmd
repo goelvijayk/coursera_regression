@@ -1,0 +1,77 @@
+---
+title: "Regression_Coursera_assignment"
+author: "Vijay Goel"
+date: "January 22, 2015"
+output: pdf_document
+---
+  
+### Executive summary
+There has been a question on performance comparison of Automatic transmission cars, and Manual transmission cars. One of the key arguments in favour of Manual has been higher fuel efficiency. This study explores whether this rationale holds true, and what the comparison is. Data used is 'mtcars', and is considered representative for this case.
+
+Results indicate that Manual transmission is indeed better on miles-per-gallon, by about 3mpg.
+
+### Method
+
+First we will get what raw means look like. At an overall level, does Manual transmission seem to outperform? Well, yes it does. See plot below.
+
+```{r echo=FALSE}
+library(ggplot2)
+data("mtcars")
+mtcars$vs <- factor(mtcars$vs) #convert binary variable to factor 
+mtcars$am <- factor(mtcars$am) # convert binary variable to factor
+
+library(plyr)
+transmission <- revalue(mtcars$am, c('0'="automatic", '1'="manual")) #set levels. Values received from help(mtcars) which confirmed 0 as automatic.
+
+ggplot(mtcars, aes(x=transmission, y=mpg)) +
+geom_boxplot() +
+ggtitle("Manual transmission outperforms Automatic.") +
+xlab("transmission") +
+ylab("mpg")
+```
+
+Next, we'll cross check if this value is significant. For this, mpg is plotted against transmission (only one variable). Results below say that it is significant too.
+
+```{r echo = FALSE}
+fit_am<- lm(mpg~am, data=mtcars)
+summary(fit_am)
+```
+
+However, raw value being better does not confirm that transmission type is the driving variable here. Also, the overall variability explained is low, which means that we are missing some driving variable(s) here.
+
+To get few driving variable, we need to get to a prediction model where large part of variation is explained by few variables, which are preferably individually significant. Ideally, at least 80% variation should be explained.
+
+We'll first explore a linear regression model with all variables, and slowly reduce them. If that does not work, we can go after more detailed methods like removing or combining correlated variables.
+
+Results below indicate that all variable combined can explain more than 80% variability. However, most of the variables are insignificant with very large p values.
+
+```{r echo=FALSE}
+fit_all<- lm(mpg~., data=mtcars)
+summary(fit_all)
+```
+
+This indicates that we have un-necessary and possibly correlated variable(s) in the model. So, we start removing one variable at a time. Approach used was to remove the most insignificant variable until one of the following conditions was violated -
+1) variable am is a valid variable
+2) explained variability is >80%
+3) at least one variable is insignificant
+
+Following this approach, final model that we are left with, is below. Intermediate steps are not displayed, but the order of elimination was - cyl, vs, carb, gear, drat, disp, hp.
+
+```{r echo=FALSE}
+fit1<- lm(mpg~ wt + qsec + am, data=mtcars)
+summary(fit1)
+```
+
+#### Residuals
+```{r echo=FALSE}
+library(alr3)
+residualPlots(fit1)
+
+par(mfrow = c(2,2))
+plot(fit1)
+```
+
+
+Final variables that explain >80% variability are: weight of vehicle, 1/4 mile time and type of transmission. This model indicates that manual transmission outperforms automatic transmission by ~3 miles per gallon.
+
+Residual plot also does not show correlation with fitted values. Q-Q plot suggests reasonably good normality. Pearson residual plots against each variable suggest that dependency of Pearson residual on each variable is low, which indicates a good model. Most of the data points are also within +/- 3 range on standardized residual, which indicates only few outliers. However, there is mild curve in variables, which indicates that real relationship with these variables is not linear. That's intuitive too. Given that overall model fit is fairly good, and linear relationship with each variable holds reasonably well, we'll stay with the current model for purpose of this exercise.
